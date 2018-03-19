@@ -17,18 +17,6 @@
 #include <linux/inet.h>
 #include <uapi/asm/ptrace-abi.h>
 
-#ifdef CONFIG_FRAME_POINTER
-	#ifdef CC_USING_FENTRY
-		#define MCOUNT_FRAME_SIZE (8+16*2)
-	#else
-		#define MCOUNT_FRAME_SIZE (8+16)
-	#endif
-#else
-	#define MCOUNT_FRAME_SIZE 8
-#endif
-
-#define MCOUNT_REG_SIZE (SS+8+MCOUNT_FRAME_SIZE)
-
 int testfunction_1(void){
 
 __asm__(

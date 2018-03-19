@@ -55,15 +55,21 @@ static void my_run_sync(void){
 unsigned long addr;
 u32 content;
 atomic_t * addr3;
-
+unsigned char brk = 0xcc;
+unsigned char call= 0xe8;
+unsigned char origin;
 static int __init my_write_init(void)
 {
 	unsigned long addr2 = kallsyms_lookup_name("testfunction_1");
 	u32 offset;
 
+
+
+
 	addr = kallsyms_lookup_name("udp_send_skb");
 	offset = addr2 - 5 - addr;
 	content = *((u32 *)(addr+1));
+	origin = *((u8*)addr);
 	//printk(KERN_INFO "ip rcv addr is %p testfunction is %p content %08x\n", addr, addr2, content);
 
 	addr3= (atomic_t *)kallsyms_lookup_name("modifying_ftrace_code");
@@ -76,14 +82,17 @@ static int __init my_write_init(void)
 		
 	smp_wmb();
 	atomic_inc(addr3);
-	*((u8*)addr) = 0xcc;
+	//*((u8*)addr) = 0xcc;
+	probe_kernel_write(addr, &brk, 1);
 	my_run_sync();
 
-	*((u32*)(addr+1))= offset;
+	//*((u32*)(addr+1))= offset;
+	probe_kernel_write(addr+1, &offset, 4);
 	
 	my_run_sync();	
 
-	*((u8*)addr) = 0xe8;
+	//*((u8*)addr) = 0xe8;
+	probe_kernel_write(addr, &call, 1);
 
 	my_run_sync();	
 
@@ -102,15 +111,18 @@ static void __exit my_write_exit(void)
 
 	smp_wmb();
 	atomic_inc(addr3);
-	*((u8*)addr) = 0xcc;
+	//*((u8*)addr) = 0xcc;
+	probe_kernel_write(addr, &brk, 1);
 
 	my_run_sync();
 
-	*((u32*)(addr+1))= content;
+	//*((u32*)(addr+1))= content;
+	probe_kernel_write(addr+1, &content, 4);
 	
 	my_run_sync();	
 
-	*((u8*)addr) = 0x0f;
+	//*((u8*)addr) = origin;
+	probe_kernel_write(addr, &origin, 1);
 
 	my_run_sync();	
 
