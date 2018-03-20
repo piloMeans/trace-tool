@@ -20,7 +20,7 @@ sudo insmod write.ko
 
 - modify the function 
 
-Modify the 'testfunction_1` in `function.c`, you can do something youself want. However, 
+Modify the `testfunction_1` in `function.c`, you can do something youself want. However, 
 DO NOT modify the embedded asm, as they are use to save and restore the regs before your
 function. Without them, the kernel will crash after you insert the `write.ko`.
 
