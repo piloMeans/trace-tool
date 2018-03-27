@@ -4,8 +4,14 @@
 
 #CONFIG_MODULES_SIG=n
 
+#obj-m+=write.o
+#obj-m+=write_2.o
+#obj-m+=function_a.o
+#obj-m+=myjprobe_5.o
+#function_a-m= function.o helper.o
+
 obj-m+=write.o
-obj-m+=function.o
+write-m= write_3.o ret_helper.o pre_helper.o
 
 
 all:

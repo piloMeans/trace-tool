@@ -14,18 +14,22 @@ we can use ftrace mcount.
 
 ```bash
 make
-sudo insmod function.ko
+#sudo insmod function.ko  # please do not use function.ko
+#sudo insmod write.ko
+
 sudo insmod write.ko
 ```
 
 - modify the function 
 
-Modify the `testfunction_1` in `function.c`, you can do something youself want. However, 
-DO NOT modify the embedded asm, as they are use to save and restore the regs before your
-function. Without them, the kernel will crash after you insert the `write.ko`.
+Modify the `testfunction_1` in ~~`function.c`~~ `write_3.c`, you can do something youself want. 
+However, DO NOT modify the ~~embedded asm~~ assemble code in `pre_handler.S` and `ret_handler.S`,
+as they are use to save and restore the regs before your function. Without them, the kernel 
+will crash after you insert the `write.ko`.
 
-You can change the insert point as you change the `udp_send_skb` in write.c to some other
+You can change the insert point as you change the `udp_send_skb` in write\_3.c to some other
 function (Remember that the function name should can be find in the `/proc/kallsyms` file)
+
 
 - view result
 
