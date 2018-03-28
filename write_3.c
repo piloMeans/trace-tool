@@ -17,6 +17,7 @@
 #include <linux/inet.h>
 #include <asm/ftrace.h>
 #include <linux/smp.h>
+#include <uapi/linux/time.h>
 
 struct data_trans{
 	unsigned long ret_addr;
@@ -25,7 +26,7 @@ struct data_trans{
 extern void my_pre_handler(void);
 extern void my_ret_handler(void);
 
-static struct data_trans mydata_trans[NR_CPUS];
+//static struct data_trans mydata_trans[NR_CPUS];
 
 unsigned long addr;
 u32 content;
@@ -68,21 +69,27 @@ static void my_run_sync(void){
 
 void testfunction_ret_1(void){
 
-	int cpu;	
+	//int cpu;	
 
 	//ret function
 	//trace_printk("hello ret\n");
+	unsigned long func;
+	struct timespec time;
+	struct timespec time2;
 
+	//cpu=smp_processor_id();
 
-	cpu=smp_processor_id();
-
-	printk(KERN_INFO "hello ret cpu is %d  addr is  %p\n", cpu, mydata_trans[cpu].ret_addr);
 	__asm__ __volatile__(
-		"movq %0, 0xa8(%%rbp);"
+		"movq  0xa8(%%rbp), %0;"		// get the function addr
+		"movq  0x98(%%rbp), %1;"
+		"movq  0x90(%%rbp), %2;"
+		: "=a"(func), "=b"(time.tv_sec), "=c"(time.tv_nsec)
 		:
-		: "b"(mydata_trans[cpu].ret_addr)
 		:
 	);
+
+	getnstimeofday(&time2);
+	printk(KERN_INFO "before is %p.%p after is %p.%p\n", time.tv_sec, time.tv_nsec, time2.tv_sec, time2.tv_nsec);
 
 
 }
@@ -92,24 +99,28 @@ void testfunction_1(void){
 //	mov $rsp, $rbp
 
 	unsigned long function_ret;
-//	unsigned long trace_ret;
-	int cpu;
+	unsigned long func;
+	struct timespec time;
+
+//	int cpu;
 	//add your own code here
-	//trace_printk("hello modify\n");
 
 	function_ret=(unsigned long)my_ret_handler;
-	cpu = smp_processor_id();	
+	getnstimeofday(&time);
+//	cpu = smp_processor_id();	
 
 	__asm__ __volatile__(
-		"movq 0xe8(%%rbp), %0;"
-		"movq %1, 0xe8(%%rbp);"
-//		: "=a"(trace_ret)
-		: "=a"(mydata_trans[cpu].ret_addr)
-		: "b"(function_ret)
-//		:
+		"movq %1, 0x68(%%rbp);"		// timestamp second
+		"movq %2, 0x60(%%rbp);"		// timestamp nanosecond
+		"movq %3, 0x58(%%rbp);"		// get the function ret addr
+		"movq 0x50(%%rbp), %0;"		// get the function addr
+		: "=a"(func)
+		: "b"(time.tv_sec), "c"(time.tv_nsec),"d"(function_ret)
 		:
 	);
-	printk(KERN_INFO "hello modify cpu is %d ret_addr is %p \n", cpu, mydata_trans[cpu].ret_addr);
+	printk(KERN_INFO "start func is %p function ret is %p timestamp %p.%p\n", func, function_ret, time.tv_sec, time.tv_nsec); 
+
+
 //	mydata_trans[cpu].ret_addr=trace_ret;
 }
 
@@ -157,7 +168,8 @@ static int __init my_write_init(void)
 	set_page_ro(addr);
 
 #endif
-	
+		
+	printk(KERN_INFO "write init\n");
     return 0;
 }
 

@@ -1,9 +1,7 @@
 #include <linux/linkage.h>
 
 ENTRY(my_ret_handler)
-	pushq %rsp
 	pushfq
-	subq $0x18, %rsp
 	pushq %rdi
 	pushq %rsi
 	pushq %rdx
@@ -24,7 +22,6 @@ ENTRY(my_ret_handler)
 	
 	call testfunction_ret_1
 
-#	movq %rax, 0x98(%rsp)
 	popq %r15
 	popq %r14
 	popq %r13
@@ -40,7 +37,7 @@ ENTRY(my_ret_handler)
 	popq %rdx
 	popq %rsi
 	popq %rdi
-	addq $0x18, %rsp
 	popfq
+    addq $0x20, %rsp
 	retq
 END(my_ret_handler)
