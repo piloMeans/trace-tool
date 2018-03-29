@@ -129,6 +129,10 @@ void testfunction_ret_1(void){
 				time_used = FUNC_RECORD_SIZE-1;
 
 			cpu=smp_processor_id();
+			if(cpu >= CPU_NUM){
+				printk(KERN_ALERT "module write CPU_NUM is less than core numbers\n");
+				goto out;
+			}
 			//trace_printk("cpu now is %d delay is %d(100ns)\n", cpu, time_used);
 			my_delay_record[cpu][i].count[time_used]++;
 			

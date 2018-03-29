@@ -13,6 +13,9 @@ we can use ftrace mcount.
 - build the module and load
 
 ```bash
+
+# you shold modify the macro CPU_NUM in write_3.c first !!!!!
+
 make
 #sudo insmod function.ko  # please do not use function.ko
 #sudo insmod write.ko
