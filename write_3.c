@@ -125,8 +125,8 @@ void testfunction_ret_1(void){
 			getnstimeofday(&time2);
 			time_used = ((time2.tv_sec - time.tv_sec))*10000000 + (time2.tv_nsec - time.tv_nsec)/100;
 			
-			if(time_used >= FUNC_TABLE_SIZE)
-				time_used = FUNC_TABLE_SIZE-1;
+			if(time_used >= FUNC_RECORD_SIZE)
+				time_used = FUNC_RECORD_SIZE-1;
 
 			cpu=smp_processor_id();
 			//trace_printk("cpu now is %d delay is %d(100ns)\n", cpu, time_used);
