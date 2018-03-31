@@ -19,9 +19,13 @@
 #include <linux/smp.h>
 #include <uapi/linux/time.h>
 #include <linux/cpumask.h>
+#include <asm/current.h>
+#include <uapi/linux/ip.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
 
 #define CPU_NUM 4
-#define FUNC_TABLE_SIZE 6
+#define FUNC_TABLE_SIZE 11
 #define FUNC_RECORD_SIZE 1000
 
 //struct data_trans{
@@ -41,12 +45,24 @@ struct func_table{
 	char name[30];
 };
 
-struct func_delay_record{
-	unsigned long count[FUNC_RECORD_SIZE];
-};
-static struct func_table my_func_table[FUNC_TABLE_SIZE]={{0,0,0,0,"udp_send_skb"},{0,0,0,0,"ip_send_skb"},{0,0,0,0,"ip_finish_output2"},{0,0,0,0,"ip_rcv"},{0,0,0,0,"__netif_receive_skb_core"},{0,0,0,0,"ip_local_deliver"}};
+//struct func_delay_record{
+//	unsigned long count[FUNC_RECORD_SIZE];
+//};
+static struct func_table my_func_table[FUNC_TABLE_SIZE]={
+	{0,1,0,0,"ip_queue_xmit"},
+	{0,2,0,0,"ip_finish_output2"},
+	{0,0,0,0,"ip_rcv"},
+	{0,0,0,0,"__netif_receive_skb_core"},
+	{0,0,0,0,"ip_local_deliver"},
+	{0,0,0,0,"ip_local_out"},
+	{0,2,0,0,"br_handle_frame_finish"},
+	{0,2,0,0,"ip_output"},
+	{0,0,0,0,"__dev_queue_xmit"},
+	{0,0,0,0,"netif_receive_skb_internal"},
+	{0,1,0,0,"napi_gro_receive"}
+	};
 
-static struct func_delay_record my_delay_record[CPU_NUM][FUNC_TABLE_SIZE];
+//static struct func_delay_record my_delay_record[CPU_NUM][FUNC_TABLE_SIZE];
 
 //unsigned long addr;
 //u32 content;
@@ -54,7 +70,6 @@ atomic_t * addr3;
 const unsigned char brk = 0xcc;
 const unsigned char call= 0xe8;
 //unsigned char origin;
-
 
 static void set_page_rw(unsigned long addr){
 	unsigned int level;
@@ -86,7 +101,7 @@ static void my_run_sync(void){
 	if(enable_irqs)
 		local_irq_disable();
 }
-
+#if 0
 void testfunction_ret_1(void){
 
 	int cpu;	
@@ -143,35 +158,41 @@ void testfunction_ret_1(void){
 out:
 	;
 }
+#endif
 void testfunction_1(void){
 // invisible instruction
 //	push $rbp
 //	mov $rsp, $rbp
 
-	unsigned long function_ret;
+//	unsigned long function_ret;
 	unsigned long func;
 	struct timespec time;
+	struct sk_buff * skb;
 	int i;
+	unsigned long offset;
+	struct iphdr *iph;
+	struct tcphdr *tcph;
 
 //	int cpu;
 	//add your own code here
 
-	function_ret=(unsigned long)my_ret_handler;
+//	function_ret=(unsigned long)my_ret_handler;
 //	getnstimeofday(&time);
 //	cpu = smp_processor_id();	
 
 	__asm__ __volatile__(
 //		"movq %1, 0x68(%%rbp);"		// timestamp second
 //		"movq %2, 0x60(%%rbp);"		// timestamp nanosecond
-		"movq %1, 0x58(%%rbp);"		// set the function ret addr
+//		"movq %1, 0x58(%%rbp);"		// set the function ret addr
 		"movq 0x50(%%rbp), %0;"		// get the function addr
 		: "=a"(func)
 //		: "b"(time.tv_sec), "c"(time.tv_nsec),"d"(function_ret)
-		: "d"(function_ret)
+//		: "d"(function_ret)
+		:
 		:
 	);
 
-
+#if 1
 	//trace_printk("this func addr is %p\n", func);
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		if(func == my_func_table[i].addr +5){
@@ -180,24 +201,52 @@ void testfunction_1(void){
 			// do some filter here
 			
 			getnstimeofday(&time);
+		#if 0
+			if(my_func_table[i].skb_idx >=0){
+		#endif
+			offset = 0x10 + my_func_table[i].skb_idx *8;
+
 			__asm__ __volatile__(
-			"movq $1, 0x70(%%rbp);"		// set the status to 1
-			"movq %0, 0x68(%%rbp);"		// timestamp second
-			"movq %1, 0x60(%%rbp);"		// timestamp nanosecond
-			:
-			: "b"(time.tv_sec), "c"(time.tv_nsec)
+//			"movq $1, 0x70(%%rbp);"		// set the status to 1
+//			"movq %0, 0x68(%%rbp);"		// timestamp second
+//			"movq %1, 0x60(%%rbp);"		// timestamp nanosecond
+			"addq %%rbp, %1\n"
+			"movq (%%rax), %0\n"
+			: "=c"(skb)
+//			: "b"(time.tv_sec), "c"(time.tv_nsec)
+			: "a"(offset)
 			:
 			);
+			iph = ip_hdr(skb);
+			tcph = tcp_hdr(skb);
+			trace_printk("%ld %ld %p %d %04x %04x %d %d\n", time.tv_sec, time.tv_nsec, skb->head, i, iph->saddr, iph->daddr, tcph->source, tcph->dest);
+
+		#if 0
+			}
+			else{
+				offset = 0x8 - my_func_table[i].skb_idx *8;
+			__asm__ __volatile__(
+			"addq %%rbp, %1\n"
+			"movq (%%rax), %0\n"
+			: "=c"(sk)
+			: "a"(offset)
+			:
+			);
+
+				trace_printk("%ld %ld %d %d %d\n", time.tv_sec, time.tv_nsec,i, current->pid, current->tgid);
+			}
+		#endif
 			goto out;
 		}
 	}
 	//printk(KERN_INFO "start func is %p function ret is %p timestamp %p.%p\n", func, function_ret, time.tv_sec, time.tv_nsec); 
-	__asm__ __volatile__(
-	"movq $0, 0x70(%%rbp);"		// set the status to 0
-	:::
-	);	
+//	__asm__ __volatile__(
+//	"movq $0, 0x70(%%rbp);"		// set the status to 0
+//	:::
+//	);	
 out: 
 	;
+#endif
 }
 
 static void code_modify(struct func_table* func, unsigned long target_addr){
@@ -254,15 +303,18 @@ static int __init my_write_init(void)
 {
 	//printk(KERN_INFO "f addr is %p\n", my_run_sync);
 	
-	int i,j;
+	int i;
+//	int j;
 	
 	addr3= (atomic_t *)kallsyms_lookup_name("modifying_ftrace_code");
 
+#if 0
 	for(i=0;i<CPU_NUM;i++){
 		for(j=0;j<FUNC_TABLE_SIZE;j++){
 			memset(my_delay_record[i][j].count, 0, sizeof(unsigned long)*FUNC_TABLE_SIZE);
 		}
 	}
+#endif
 	
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		my_func_table[i].addr = kallsyms_lookup_name(my_func_table[i].name);
@@ -275,14 +327,15 @@ static int __init my_write_init(void)
 
 static void __exit my_write_exit(void)
 {
-	int i,j,k;
+	int i;
+	//int j,k;
 	//output the result
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		code_restore( &(my_func_table[i]));
 	}
 	//trace_printk("NR_CPUS is %d\n", NR_CPUS);
 	//trace_printk("NR_CPUS is %d\n", num_online_cpus());
-#if 1
+#if 0
 	for(j=0;j<FUNC_TABLE_SIZE;j++){
 		trace_printk("function: %s\n", my_func_table[j].name);
 		for(i=0;i<CPU_NUM;i++){

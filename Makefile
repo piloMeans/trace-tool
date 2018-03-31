@@ -11,7 +11,7 @@
 #function_a-m= function.o helper.o
 
 obj-m+=write.o
-write-m= write_3.o ret_helper.o pre_helper.o
+write-m= write_3.o  pre_helper.o
 
 
 all:
