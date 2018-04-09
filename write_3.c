@@ -27,10 +27,11 @@
 #include <asm/atomic.h>
 #include <asm/cmpxchg.h>
 
-#define CPU_NUM 4
+#define CPU_NUM 16
 #define FUNC_TABLE_SIZE 9
-#define ADDR_HEAD_SIZE 10000
+#define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
+#define SAMPLE_RATIO 4294967
 extern void my_pre_handler(void);
 //extern void my_ret_handler(void);
 
@@ -282,13 +283,17 @@ Again:				prev=&(addrHead[cpu][idx].lhead);
 			}else{
 				// not found 
 				
-				if(my_func_table[i].flag == 1 && time.tv_nsec > 0){
+				if(my_func_table[i].flag == 1 && time.tv_nsec < SAMPLE_RATIO){
 
 					//output
 					output(skb, &time, i);
 
 					//insert into hash
 					temp= kmem_cache_alloc(myslab, GFP_KERNEL);
+					if(temp==NULL){
+						printk(KERN_ALERT "CPU NUM is less than the cpu core numbers\n");
+						goto out;
+					}
 				//	temp->next=temp;
 					temp->addr = (unsigned long)skb->head;
 
