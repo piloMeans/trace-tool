@@ -23,43 +23,50 @@
 #include <uapi/linux/ip.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
+#include <linux/jhash.h>
+#include <asm/atomic.h>
+#include <asm/cmpxchg.h>
 
 #define CPU_NUM 4
-#define FUNC_TABLE_SIZE 11
-#define FUNC_RECORD_SIZE 1000
-
-//struct data_trans{
-//	unsigned long ret_addr;
-//};
-
+#define FUNC_TABLE_SIZE 9
+#define ADDR_HEAD_SIZE 10000
+#define HASH_INTERVAL 12345
 extern void my_pre_handler(void);
-extern void my_ret_handler(void);
+//extern void my_ret_handler(void);
 
-//static struct data_trans mydata_trans[NR_CPUS];
 
 struct func_table{
 	unsigned long addr;
-	int skb_idx;
 	u32 content;
+	u16 skb_idx;
 	u8	origin;
+	u8 flag;		// 0 means mid, 1 means start, 2 means end
 	char name[30];
 };
 
-//struct func_delay_record{
-//	unsigned long count[FUNC_RECORD_SIZE];
-//};
+
+struct addr_list{
+	struct addr_list *next;
+	u64 addr;
+};
+struct addr_head{
+	struct addr_list lhead;
+};
+
+struct addr_head addrHead[CPU_NUM][ADDR_HEAD_SIZE];
+static struct kmem_cache *myslab;
+
 static struct func_table my_func_table[FUNC_TABLE_SIZE]={
-	{0,1,0,0,"ip_queue_xmit"},
-	{0,2,0,0,"ip_finish_output2"},
-	{0,0,0,0,"ip_rcv"},
-	{0,0,0,0,"__netif_receive_skb_core"},
-	{0,0,0,0,"ip_local_deliver"},
-	{0,0,0,0,"ip_local_out"},
-	{0,2,0,0,"br_handle_frame_finish"},
-	{0,2,0,0,"ip_output"},
-	{0,0,0,0,"__dev_queue_xmit"},
-	{0,0,0,0,"netif_receive_skb_internal"},
-	{0,1,0,0,"napi_gro_receive"}
+//	{0,0,0,0,1,"udp_send_skb"},
+	{0,0,0,0,2,"skb_free_head"},			// skb_free_head(struct sk_buff *skb)
+	{0,0,1,0,1,"ip_queue_xmit"},			// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
+	{0,0,0,0,0,"ip_rcv"},					// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
+	{0,0,0,0,0,"__netif_receive_skb_core"},	// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+	{0,0,0,0,0,"ip_local_deliver"},			// ip_local_deliver(struct sk_buff *skb)
+	{0,0,2,0,0,"ip_local_out"},				// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,2,0,0,"ip_output"},				// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,0,0,0,"__dev_queue_xmit"},			// __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
+	{0,0,1,0,1,"napi_gro_receive"}			// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 	};
 
 //static struct func_delay_record my_delay_record[CPU_NUM][FUNC_TABLE_SIZE];
@@ -70,6 +77,7 @@ atomic_t * addr3;
 const unsigned char brk = 0xcc;
 const unsigned char call= 0xe8;
 //unsigned char origin;
+
 
 static void set_page_rw(unsigned long addr){
 	unsigned int level;
@@ -100,6 +108,34 @@ static void my_run_sync(void){
 	on_each_cpu(my_do_sync_core, NULL, 1);
 	if(enable_irqs)
 		local_irq_disable();
+}
+
+static int search(unsigned long addr, int *idx, int cpu){
+	u32 high, low;
+	struct addr_list *temp;
+	high = ((addr) >> 32);
+	low = addr;
+	*idx = (jhash_2words(high, low, HASH_INTERVAL)) % ADDR_HEAD_SIZE;
+
+	temp=&(addrHead[cpu][*idx].lhead);
+	while(temp!=NULL){
+		if(temp->addr == addr){
+			return 0;		// find it
+		}
+		temp=temp->next;
+	}
+	return -1;		// not found
+}
+static inline void output(struct sk_buff *skb, struct timespec *time, int funcid){
+
+	struct iphdr *iph;
+	struct tcphdr *tcph;
+	u64 tstamp;
+	tstamp = (time->tv_sec << 32) | time->tv_nsec;
+
+	iph= ip_hdr(skb);
+	tcph= tcp_hdr(skb);
+	trace_printk("%p %x %x %d %d %d %llx\n", skb->head, iph->saddr, iph->daddr, tcph->source , tcph->dest, funcid, tstamp);
 }
 #if 0
 void testfunction_ret_1(void){
@@ -170,16 +206,17 @@ void testfunction_1(void){
 	struct sk_buff * skb;
 	int i;
 	unsigned long offset;
-	struct iphdr *iph;
-	struct tcphdr *tcph;
-
-//	int cpu;
+	int idx;
+	int cpu;
+	struct addr_list *prev, *temp;
 	//add your own code here
 
 //	function_ret=(unsigned long)my_ret_handler;
 //	getnstimeofday(&time);
 //	cpu = smp_processor_id();	
-
+	
+//	trace_printk("cpu is %d\n", get_cpu());
+//	put_cpu();
 	__asm__ __volatile__(
 //		"movq %1, 0x68(%%rbp);"		// timestamp second
 //		"movq %2, 0x60(%%rbp);"		// timestamp nanosecond
@@ -192,18 +229,12 @@ void testfunction_1(void){
 		:
 	);
 
+	getnstimeofday(&time);
 #if 1
 	//trace_printk("this func addr is %p\n", func);
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		if(func == my_func_table[i].addr +5){
-
-			//trace_printk("func matched addr is %p\n", my_func_table[i].addr);
-			// do some filter here
 			
-			getnstimeofday(&time);
-		#if 0
-			if(my_func_table[i].skb_idx >=0){
-		#endif
 			offset = 0x10 + my_func_table[i].skb_idx *8;
 
 			__asm__ __volatile__(
@@ -217,25 +248,63 @@ void testfunction_1(void){
 			: "a"(offset)
 			:
 			);
-			iph = ip_hdr(skb);
-			tcph = tcp_hdr(skb);
-			trace_printk("%ld %ld %p %d %04x %04x %d %d\n", time.tv_sec, time.tv_nsec, skb->head, i, iph->saddr, iph->daddr, tcph->source, tcph->dest);
-
-		#if 0
+			cpu = smp_processor_id();
+			if(cpu >= CPU_NUM){
+				printk(KERN_ALERT "CPU NUM is less than the cpu core numbers\n");
+				goto out;
 			}
-			else{
-				offset = 0x8 - my_func_table[i].skb_idx *8;
-			__asm__ __volatile__(
-			"addq %%rbp, %1\n"
-			"movq (%%rax), %0\n"
-			: "=c"(sk)
-			: "a"(offset)
-			:
-			);
+			if(search((unsigned long)(skb->head), &idx, cpu)==0){
+				// find 
+				
+				output(skb, &time, i);
 
-				trace_printk("%ld %ld %d %d %d\n", time.tv_sec, time.tv_nsec,i, current->pid, current->tgid);
+				if(my_func_table[i].flag == 2){
+				// end, release 
+Again:				prev=&(addrHead[cpu][idx].lhead);
+					temp=prev->next;
+					while(temp->addr!= (unsigned long)(skb->head)){
+						prev = temp;
+						temp=temp->next;
+					}
+				//	xchg(&(prev->next), temp->next);
+				
+					local_irq_disable();
+					if(prev->next != temp){
+						local_irq_enable();
+						goto Again;
+					}
+					prev -> next = temp->next;
+					local_irq_enable();
+
+					kmem_cache_free(myslab, temp);
+				}
+	
+			}else{
+				// not found 
+				
+				if(my_func_table[i].flag == 1 && time.tv_nsec > 0){
+
+					//output
+					output(skb, &time, i);
+
+					//insert into hash
+					temp= kmem_cache_alloc(myslab, GFP_KERNEL);
+				//	temp->next=temp;
+					temp->addr = (unsigned long)skb->head;
+
+					prev=&(addrHead[cpu][idx].lhead);
+
+				//	xchg(&(prev->next), temp->next);
+					local_irq_disable();
+					
+					temp->next = prev->next;
+					prev->next= temp;	
+
+					local_irq_enable();
+
+				}
 			}
-		#endif
+
 			goto out;
 		}
 	}
@@ -299,23 +368,28 @@ static void code_restore(struct func_table* func){
 	set_page_ro(addr);
 
 }
+
 static int __init my_write_init(void)
 {
 	//printk(KERN_INFO "f addr is %p\n", my_run_sync);
 	
 	int i;
-//	int j;
+	int j;
 	
-	addr3= (atomic_t *)kallsyms_lookup_name("modifying_ftrace_code");
+	//init slab
+	myslab = kmem_cache_create("myslab", sizeof(struct addr_list), 0, 
+				SLAB_HWCACHE_ALIGN | SLAB_POISON | SLAB_RED_ZONE, NULL);
 
-#if 0
 	for(i=0;i<CPU_NUM;i++){
-		for(j=0;j<FUNC_TABLE_SIZE;j++){
-			memset(my_delay_record[i][j].count, 0, sizeof(unsigned long)*FUNC_TABLE_SIZE);
+		for(j=0;j<ADDR_HEAD_SIZE;j++){
+			addrHead[i][j].lhead.next=NULL;
+			addrHead[i][j].lhead.addr=0;
 		}
 	}
-#endif
-	
+
+	addr3= (atomic_t *)kallsyms_lookup_name("modifying_ftrace_code");
+
+
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		my_func_table[i].addr = kallsyms_lookup_name(my_func_table[i].name);
 		code_modify( &(my_func_table[i]), (unsigned long)my_pre_handler);
@@ -327,26 +401,27 @@ static int __init my_write_init(void)
 
 static void __exit my_write_exit(void)
 {
-	int i;
-	//int j,k;
-	//output the result
+	int i,j;
+	
+	//restore the code
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		code_restore( &(my_func_table[i]));
 	}
-	//trace_printk("NR_CPUS is %d\n", NR_CPUS);
-	//trace_printk("NR_CPUS is %d\n", num_online_cpus());
-#if 0
-	for(j=0;j<FUNC_TABLE_SIZE;j++){
-		trace_printk("function: %s\n", my_func_table[j].name);
-		for(i=0;i<CPU_NUM;i++){
-			trace_printk("CPU: %d\n", i);
-			for(k=0;k<FUNC_RECORD_SIZE;k++){
-				trace_printk("%ld ", my_delay_record[i][j].count[k]);
+	
+	//free the slab
+	for(i=0;i<CPU_NUM;i++){
+		for(j=0;j<ADDR_HEAD_SIZE;j++){
+			struct addr_list *temp= (addrHead[i][j].lhead).next;
+			struct addr_list *temp2;
+			while(temp!=NULL){
+				temp2=temp->next;
+				kmem_cache_free(myslab, temp);
+				temp=temp2;
 			}
-			trace_printk("\n");
 		}
 	}
-#endif
+	kmem_cache_destroy(myslab);
+
 	printk(KERN_INFO "write exit\n");
 }
 
