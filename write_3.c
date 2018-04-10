@@ -28,10 +28,10 @@
 #include <asm/cmpxchg.h>
 
 #define CPU_NUM 16
-#define FUNC_TABLE_SIZE 9
+#define FUNC_TABLE_SIZE 14
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
-#define SAMPLE_RATIO 4294967
+#define SAMPLE_RATIO 100000
 extern void my_pre_handler(void);
 //extern void my_ret_handler(void);
 
@@ -59,15 +59,21 @@ static struct kmem_cache *myslab;
 
 static struct func_table my_func_table[FUNC_TABLE_SIZE]={
 //	{0,0,0,0,1,"udp_send_skb"},
-	{0,0,0,0,2,"skb_free_head"},			// skb_free_head(struct sk_buff *skb)
-	{0,0,1,0,1,"ip_queue_xmit"},			// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
-	{0,0,0,0,0,"ip_rcv"},					// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
-	{0,0,0,0,0,"__netif_receive_skb_core"},	// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
-	{0,0,0,0,0,"ip_local_deliver"},			// ip_local_deliver(struct sk_buff *skb)
-	{0,0,2,0,0,"ip_local_out"},				// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,2,0,0,"ip_output"},				// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,0,0,0,"__dev_queue_xmit"},			// __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
-	{0,0,1,0,1,"napi_gro_receive"}			// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
+	{0,0,0,0,2,"skb_free_head"},				// skb_free_head(struct sk_buff *skb)
+//	{0,0,1,0,1,"ip_queue_xmit"},				// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
+	{0,0,0,0,0,"ip_rcv"},						// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
+	{0,0,0,0,0,"__netif_receive_skb_core"},		// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+	{0,0,0,0,0,"ip_local_deliver"},				// ip_local_deliver(struct sk_buff *skb)
+	{0,0,2,0,0,"ip_local_out"},					// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,2,0,0,"ip_output"},					// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,0,0,0,"__dev_queue_xmit"},				// __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
+	{0,0,1,0,1,"napi_gro_receive"},				// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
+	{0,0,0,0,1,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
+	{0,0,1,0,1,"tcp_transmit_skb"},				// tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask)
+	{0,0,2,0,0,"br_handle_frame_finish"},		// br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,0,0,0,"netif_receive_skb_internal"},	// netif_receive_skb_internal(struct sk_buff *skb)
+	{0,0,1,0,0,"ovs_vport_receive"},			// ovs_vport_receive(struct vport *vport, struct sk_buff *skb, const struct ip_tunnel_info *tun_info)
+	{0,0,1,0,0,"ovs_execute_actions"}			// ovs_execute_actions(struct datapath *dp, struct sk_buff *skb, const struct sw_flow_actions *acts, struct sw_flow_key *key)
 	};
 
 //static struct func_delay_record my_delay_record[CPU_NUM][FUNC_TABLE_SIZE];
@@ -291,7 +297,7 @@ Again:				prev=&(addrHead[cpu][idx].lhead);
 					//insert into hash
 					temp= kmem_cache_alloc(myslab, GFP_KERNEL);
 					if(temp==NULL){
-						printk(KERN_ALERT "CPU NUM is less than the cpu core numbers\n");
+						printk(KERN_ALERT "kmem_cache_alloc Failed\n");
 						goto out;
 					}
 				//	temp->next=temp;
