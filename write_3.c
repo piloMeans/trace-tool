@@ -28,10 +28,10 @@
 #include <asm/cmpxchg.h>
 
 #define CPU_NUM 1
-#define FUNC_TABLE_SIZE 14
+#define FUNC_TABLE_SIZE 16
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
-#define SAMPLE_RATIO 100000
+#define SAMPLE_RATIO 1000000000
 extern void my_pre_handler(void);
 //extern void my_ret_handler(void);
 
@@ -41,7 +41,7 @@ struct func_table{
 	u32 content;
 	u16 skb_idx;
 	u8	origin;
-	u8 flag;		// 0 means mid, 1 means start, 2 means end
+	u8 flag;	
 	char name[30];
 };
 
@@ -57,24 +57,35 @@ struct addr_head{
 struct addr_head addrHead[CPU_NUM][ADDR_HEAD_SIZE];
 static struct kmem_cache *myslab;
 
+//flag meaning:
+//	0 means normal function ,mid.
+//	1 means recv start function
+//	2 means send start function
+//	3 means recv/send end function
+//	4 means certainly end function
+
+
 static struct func_table my_func_table[FUNC_TABLE_SIZE]={
 //	{0,0,0,0,1,"udp_send_skb"},
-	{0,0,0,0,2,"skb_free_head"},				// skb_free_head(struct sk_buff *skb)
+	{0,0,0,0,4,"skb_free_head"},				// skb_free_head(struct sk_buff *skb)
 //	{0,0,1,0,1,"ip_queue_xmit"},				// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
 	{0,0,0,0,0,"ip_rcv"},						// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
 	{0,0,0,0,0,"__netif_receive_skb_core"},		// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
-	{0,0,0,0,0,"ip_local_deliver"},				// ip_local_deliver(struct sk_buff *skb)
+	{0,0,0,0,3,"ip_local_deliver"},				// ip_local_deliver(struct sk_buff *skb)
 	{0,0,2,0,0,"ip_local_out"},					// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
 	{0,0,2,0,0,"ip_output"},					// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 	{0,0,0,0,0,"__dev_queue_xmit"},				// __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
 	{0,0,1,0,1,"napi_gro_receive"},				// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
-	{0,0,0,0,1,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
-	{0,0,1,0,1,"tcp_transmit_skb"},				// tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask)
+	{0,0,0,0,2,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
+	{0,0,1,0,2,"tcp_transmit_skb"},				// tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask)
 	{0,0,2,0,0,"br_handle_frame_finish"},		// br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
 	{0,0,0,0,0,"netif_receive_skb_internal"},	// netif_receive_skb_internal(struct sk_buff *skb)
 	{0,0,1,0,0,"ovs_vport_receive"},			// ovs_vport_receive(struct vport *vport, struct sk_buff *skb, const struct ip_tunnel_info *tun_info)
-	{0,0,1,0,0,"ovs_execute_actions"}			// ovs_execute_actions(struct datapath *dp, struct sk_buff *skb, const struct sw_flow_actions *acts, struct sw_flow_key *key)
-	};
+	{0,0,1,0,0,"ovs_execute_actions"},			// ovs_execute_actions(struct datapath *dp, struct sk_buff *skb, const struct sw_flow_actions *acts, struct sw_flow_key *key)
+// two driver, e1000/e1000e  ixgbe
+	{0,0,0,0,3,"e1000_xmit_frame"},				// e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
+	{0,0,0,0,3,"ixgbe_xmit_frame"},				// ixgbe_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
+};
 
 //static struct func_delay_record my_delay_record[CPU_NUM][FUNC_TABLE_SIZE];
 
@@ -142,7 +153,8 @@ static inline void output(struct sk_buff *skb, struct timespec *time, int funcid
 
 	iph= ip_hdr(skb);
 	tcph= tcp_hdr(skb);
-	trace_printk("%p %x %x %d %d %d %llx\n", skb->head, iph->saddr, iph->daddr, tcph->source , tcph->dest, funcid, tstamp);
+	trace_printk("%p %x %x %d %d %d %d %llx\n", skb->head, iph->saddr, iph->daddr, iph->protocol, tcph->source , tcph->dest, funcid, tstamp);
+//	return iph->protocol;
 }
 #if 0
 void testfunction_ret_1(void){
@@ -202,6 +214,48 @@ out:
 	;
 }
 #endif
+static inline void remove_hash(int cpu, int idx, struct sk_buff *skb){
+	struct addr_list *prev, *temp;	
+
+Again: 
+	prev = &(addrHead[cpu][idx].lhead);
+	temp=prev->next;
+	while(temp->addr!=(unsigned long)(skb->head)){
+		prev=temp;
+		temp=temp->next;
+	}
+	local_irq_disable();
+	if(prev->next!=temp){
+		local_irq_enable();
+		goto Again;
+	}
+	prev->next=temp->next;
+	local_irq_enable();
+	kmem_cache_free(myslab, temp);
+}
+static inline void insert_hash(int cpu, int idx, struct sk_buff *skb){
+	struct addr_list *prev, *temp;	
+	temp = kmem_cache_alloc(myslab, GFP_KERNEL);
+	if(temp==NULL){
+		printk(KERN_ALERT "kmem_cache_alloc Failed\n");
+		goto i_out;
+	}
+	temp->addr= (unsigned long)skb->head;
+
+	local_irq_disable();
+	prev = &(addrHead[cpu][idx].lhead);
+	temp->next = prev->next;
+	prev->next = temp;
+	local_irq_enable();
+i_out:
+	;
+}
+static inline int check_frame(struct sk_buff *skb){
+	u16 frame_type = *((u16*)(skb->head + skb->mac_header +12));
+	if(frame_type == 0xdd86 || frame_type ==0x0608 || frame_type == 0x3508)
+		return 0;
+	return 1;
+}
 void testfunction_1(void){
 // invisible instruction
 //	push $rbp
@@ -215,7 +269,8 @@ void testfunction_1(void){
 	unsigned long offset;
 	int idx;
 	int cpu;
-	struct addr_list *prev, *temp;
+//	u16 protocol;
+	//struct addr_list *prev, *temp;
 	//add your own code here
 
 //	function_ret=(unsigned long)my_ret_handler;
@@ -262,57 +317,33 @@ void testfunction_1(void){
 			}
 			if(search((unsigned long)(skb->head), &idx, cpu)==0){
 				// find 
-				
+			//	if(my_func_table[i].flag == 2){
+			//		remove_hash(cpu, idx, skb);
+			//		if(time.tv_nsec < SAMPLE_RATIO){
+			//			output(skb, &time, i);
+			//			insert_hash(cpu, idx, skb);
+			//		}
+			//		goto out;
+			//	}
 				output(skb, &time, i);
 
-				if(my_func_table[i].flag == 2){
-				// end, release 
-Again:				prev=&(addrHead[cpu][idx].lhead);
-					temp=prev->next;
-					while(temp->addr!= (unsigned long)(skb->head)){
-						prev = temp;
-						temp=temp->next;
-					}
-				//	xchg(&(prev->next), temp->next);
-				
-					local_irq_disable();
-					if(prev->next != temp){
-						local_irq_enable();
-						goto Again;
-					}
-					prev -> next = temp->next;
-					local_irq_enable();
-
-					kmem_cache_free(myslab, temp);
+				if(my_func_table[i].flag == 3 || my_func_table[i].flag==4){
+					remove_hash(cpu, idx, skb);
 				}
 	
 			}else{
 				// not found 
-				
-				if(my_func_table[i].flag == 1 && time.tv_nsec < SAMPLE_RATIO){
+				if(my_func_table[i].flag == 1 ||  my_func_table[i].flag ==2){
+					if(time.tv_nsec < SAMPLE_RATIO){
+						
+						if ( !check_frame(skb) )
+							goto out;
+						//output
+						output(skb, &time, i);
 
-					//output
-					output(skb, &time, i);
-
-					//insert into hash
-					temp= kmem_cache_alloc(myslab, GFP_KERNEL);
-					if(temp==NULL){
-						printk(KERN_ALERT "kmem_cache_alloc Failed\n");
-						goto out;
+						//insert into hash
+						insert_hash(cpu, idx, skb);
 					}
-				//	temp->next=temp;
-					temp->addr = (unsigned long)skb->head;
-
-					prev=&(addrHead[cpu][idx].lhead);
-
-				//	xchg(&(prev->next), temp->next);
-					local_irq_disable();
-					
-					temp->next = prev->next;
-					prev->next= temp;	
-
-					local_irq_enable();
-
 				}
 			}
 
@@ -333,7 +364,7 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 
 	unsigned long addr = func -> addr;
 	u32 offset;
-	if(addr ==0)
+	if(addr==0)
 		return;
 	offset = target_addr - 5 - addr;
 	func->content = *((u32 *)(addr+1));
@@ -362,7 +393,7 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 }
 static void code_restore(struct func_table* func){
 	unsigned long addr = func->addr;
-	if(addr == 0)
+	if(addr==0)
 		return;
 	set_page_rw(addr);
 
