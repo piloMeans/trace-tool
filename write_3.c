@@ -27,7 +27,7 @@
 #include <asm/atomic.h>
 #include <asm/cmpxchg.h>
 
-#define CPU_NUM 16
+#define CPU_NUM 1
 #define FUNC_TABLE_SIZE 14
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
@@ -332,7 +332,10 @@ out:
 static void code_modify(struct func_table* func, unsigned long target_addr){
 
 	unsigned long addr = func -> addr;
-	u32 offset = target_addr - 5 - addr;
+	u32 offset;
+	if(addr ==0)
+		return;
+	offset = target_addr - 5 - addr;
 	func->content = *((u32 *)(addr+1));
 	func->origin = *((u8*)addr);
 	
@@ -359,6 +362,8 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 }
 static void code_restore(struct func_table* func){
 	unsigned long addr = func->addr;
+	if(addr == 0)
+		return;
 	set_page_rw(addr);
 
 	smp_wmb();
