@@ -1,188 +1,161 @@
 #!/usr/bin/env python
 
-
 import os
-import numpy
-import math
 import sys
-import argparse
-
-
-class stastic_tuple:
+class record:
 	def __init__(self):
-		self.avg = []
-		self.count=0
+		self.func_id=[]
+		self.tstamp=[]
+		self.proto=''
+		self.src_ip=''
+		self.dst_ip=''
+		self.sport=''
+		self.dport=''
+		self.data=''
+	def clear(self):
+		self.func_id=[]
+		self.tstamp=[]
+		self.proto=''
+		self.src_ip=''
+		self.dst_ip=''
+		self.sport=''
+		self.dport=''
+		self.data=''
 
+def output(item, f):
+	out_string=""
+	out_string+=item.src_ip+"/"
+	out_string+=item.dst_ip+"/"
+	out_string+=item.proto+"/"
+	out_string+=item.sport+"/"
+	out_string+=item.dport+"/"
+	out_string+=str(len(item.func_id))+"/"
+	for i in item.func_id:
+		out_string+=i+"/"
+	for i in item.tstamp:
+		out_string+=i+"/"
+	out_string=out_string[:-1]+"\n"
+	f.write(out_string)
 
+def run(filename, outfile):
 
-def endian(before,length):
-    after=0
-    for i in range(0,length):
-        after = after << 8
-        after = after | ( before & 0xff)
-        before = before >>  8
-    return after  
-def ntohl(before):
-    return endian(before,4)
-def ntohs(before):
-    return endian(before,2)
-def int2ip(before):
-	res=''
-	for i in range(4):
-		res = str(before %256) + '.' +res	
-		before = before / 256
-	return res[:-1]
+	s = open(filename,'r').read().split('\n')[:-1]
 
-def sub(a, b):
-	mid = len(a)-8
-	if mid >0 :
-		high_a = a[0:mid]
-		low_a = a[mid:]
-	else:
-		high_a = '0'
-		low_a = a
-	mid = len(b)-8
-	if mid>0:
-		high_b = b[0:mid]
-		low_b = b[mid:]
-	else:
-		hihg_b = '0'
-		low_b = b
+	addrhash=dict()
 	
-	res = (int(high_a,16) - int(high_b, 16)) * 1000000000 + int(low_a, 16) - int(low_b,16)
-	return res
-
-
-def stastic(index, s):
-	data =[]
-	for i in index:
-		temp=s[i].split('/')
-		start = int(temp[5])+6
-		tempdata=[]
-		for j in range(start, start+int(temp[5])-1):
-			tempdata.append( sub(temp[j+1], temp[j]))
-		data.append(tempdata)
-
-	res=stastic_tuple()
-	res.count = len(data)
-	data=numpy.array(data)
-	res.avg = numpy.around(numpy.mean(data,0),6).tolist()
-	return res
-
-def output(sample, stastic_res):
-	temp = sample.split('/')
-	Func="Func\t"
-	for i in range(6, 6+int(temp[5])):
-		Func+=function_table[int(temp[i])]+"\t";
-	print("%s\n" % Func)
-	print("%d\n" % stastic_res.count)	
-	stastic="AVG\t"
-	#print stastic_res
-	for i in stastic_res.avg:
-		stastic += str(i)+"\t"
-	print("%s\n" % stastic)
-		
-			
-def func(ttuple, index, s):
-	path=dict()
+	f=open(outfile,'w')
 	
-	for i in index:
-		temp = s[i].split('/')
-		length = int(temp[5])
-#		if length > 20:
-#			continue
-		key=[]
-		for j in range(6, 6+length):
-			key.append(int(temp[j]))
-		key = tuple(key)
-		if path.has_key(key):
-			path[key].append(i)
-		else:
-			path[key]=[i]
-		
-	print('src %s:%d dst %s:%d proto %d\n' %(int2ip(ntohl(ttuple[0])), ntohs(ttuple[3]), int2ip(ntohl(ttuple[1])), ntohs(ttuple[4]), ttuple[2]))
-			
-	for i in path:
-		temp_res = stastic(path[i], s)
-		output(s[path[i][0]], temp_res)
-	print(100*"=")
-
-def	run(filename, port):
-
-	# seperate based on the 5-tuple
-	tuple_5 = dict()
-	s= open(filename, 'r').read().split('\n')[:-1]
+	#count=0
 	for i in s:
-		temp = i.split('/')
-		if int(temp[3]) != ntohs(port) and int(temp[4]) != ntohs(port):
+	#	count=count+1
+	#	print count
+		temp= i.split(' ')
+	
+		if temp[1]=='==':	#switch the key
+			if not addrhash.has_key(temp[2]):
+				addrhash[temp[2]]=record()
+			addrhash[temp[2]].clear()
+			for j in addrhash[temp[0]].func_id:
+				addrhash[temp[2]].func_id.append(j)
+			for j in addrhash[temp[0]].tstamp:
+				addrhash[temp[2]].tstamp.append(j)
+			addrhash[temp[2]].src_ip = addrhash[temp[0]].src_ip
+			addrhash[temp[2]].dst_ip = addrhash[temp[0]].dst_ip
+			addrhash[temp[2]].proto = addrhash[temp[0]].proto
+			addrhash[temp[2]].sport = addrhash[temp[0]].sport
+			addrhash[temp[2]].dport = addrhash[temp[0]].dport
+			addrhash[temp[2]].data = addrhash[temp[0]].data
+			addrhash[temp[0]].clear()
 			continue
-		tuple_temp = (int(temp[0], 16),int(temp[1], 16), int(temp[2]),int(temp[3]),int(temp[4]))
-		if tuple_5.has_key(tuple_temp):
-			tuple_5[tuple_temp].append(s.index(i))
+	
+		skb = temp[SKB]
+		key = temp[SKB_HEAD]
+		data = temp[DATA]
+		func_id = temp[FUNC_ID]
+		tstamp = temp[TSTAMP]
+		src_ip = temp[SADDR]
+		dst_ip = temp[DADDR]
+		proto = temp[PROTO]
+		sport = temp[SPORT]
+		dport = temp[DPORT]
+	
+		if addrhash.has_key(key):
+	
+			if func_table[int(func_id)][1]==4 or func_table[int(func_id)][1]==3:		# it's the end function, del the key
+	
+				# record into another value
+				#print addrhash[key].proto
+				addrhash[key].func_id.append(func_id)
+				addrhash[key].tstamp.append(tstamp)
+				if addrhash[key].proto!='':
+					if  int(addrhash[key].proto) ==6  or int(addrhash[key].proto) ==17:
+						output(addrhash[key], f)
+				addrhash[key].clear()
+				continue
+			if addrhash[key].data!='' and data!=addrhash[key].data:
+				if func_table[int(func_id)][1]!=1 and func_table[int(func_id)][1]!=2:
+					last_id = addrhash[key].func_id.pop()
+					last_tstamp=addrhash[key].tstamp.pop()
+					if addrhash[key].proto!='':
+						if int(addrhash[key].proto) ==6  or int(addrhash[key].proto) ==17:
+							output(addrhash[key], f)
+					addrhash[key].clear()
+					addrhash[key].func_id.append(last_id)
+					addrhash[key].tstamp.append(last_tstamp)
+	
+			addrhash[key].func_id.append(func_id)
+			addrhash[key].tstamp.append(tstamp)
+			if func_table[int(func_id)][1]!=1 and func_table[int(func_id)][1]!=2: 		
+				addrhash[key].src_ip = src_ip
+				addrhash[key].dst_ip = dst_ip
+				addrhash[key].proto = proto
+				addrhash[key].sport = sport
+				addrhash[key].dport = dport
+				addrhash[key].data = data
 		else:
-			tuple_5[tuple_temp]=[s.index(i)]
-	for i in tuple_5:
-		func(i, tuple_5[i], s)
+			# insert a key
+			if func_table[int(func_id)][1]==1 or func_table[int(func_id)][1]==2 :
+				item=record()
+				addrhash[key]=item;
+				addrhash[key].func_id.append(func_id)
+				addrhash[key].tstamp.append(tstamp)
+	
+	f.close()
 
-function_table={
-	0: "skb_free_head",
-	1: "ip_rcv",
-	2: "__netif_receive_skb_core",
-	3: "ip_local_deliver",
-	4: "ip_local_out",
-	5: "ip_output",
-	6: "__dev_queue_xmit",
-	7: "napi_gro_receive",
-	8: "udp_send_skb",
-	9: "tcp_transmit_skb",
-	10:"br_handle_frame_finish",
-	11:"netif_receive_skb_internal",
-	12:"ovs_vport_receive",
-	13:"ovs_execute_actions",
-	14:"e1000_xmit_frame",
-	15:"ixgbe_xmit_frame",
-	16:"ip_rcv_finish",
-	17:"ip_forward",
-	18:"ip_forward_finish"
-   }
+SKB=0
+SKB_HEAD=1
+DATA=2
+SADDR=3
+DADDR=4
+PROTO=5
+SPORT=6
+DPORT=7
+FUNC_ID=8
+TSTAMP=9
+
+func_table=[
+	('skb_free_head',				4),
+	('ip_rcv',						0),
+	('__netif_receive_skb_core',	0),
+	('ip_local_deliver',			3),
+	('ip_local_out',				0),
+	('ip_output',					0),
+	('__dev_queue_xmit',			0),
+	('napi_gro_receive',			1),
+	('udp_send_skb',				2),
+	('tcp_transmit_skb',			2),
+	('br_handle_frame_finish',		0),
+	('netif_receive_skb_internal',	0),
+	('ovs_vport_receive',			0),
+	('ovs_execute_actions',			0),
+	('e100_xmit_frame',				3),
+	('ixgbe_xmit_frame',			3),
+	('ip_rcv_finish',				0),
+	('ip_forward',					0),
+	('ip_forward_finish',			0),
+]
 	
 if __name__ == '__main__':
-
-	parser = argparse.ArgumentParser('visual the result')
-	parser.add_argument('-f','--file', dest='filename', help='file name of data', required=True)
-	parser.add_argument('-p','--port', dest='port', type=int, help='port of src/dst', required=True)
-#	parser.add_argument('-c','--clientip', dest='clientip', help='client ip address. e.g. -c 10.30.5.123',required=True)
-#	parser.add_argument('-s','--serverip', dest='serverip', help='server ip address',required=True)
-#	parser.add_argument('-t','--tport', nargs ='*', dest='tport', help='tcp port pair. e.g. -t clientport:serverport')
-#	parser.add_argument('-u','--uport', nargs ='*', dest='uport', help='udp port pair. e.g. -u 123:456 234:345')
-	args = parser.parse_args()
-
-	#print args.clientip
-	#print args.serverip
-	#print args.tport
-	#print args.uport
-
-
-	filename = args.filename
-	port = args.port
-#	client_ip = ip2int(args.clientip)
-#	server_ip = ip2int(args.serverip)
-#	
-#	tcp_client_port = []
-#	tcp_server_port = []
-#	udp_client_port = []
-#	udp_server_port = []
-#
-#	if not args.tport is None:
-#		for i in args.tport:
-#			i=i.split(':')
-#			tcp_client_port.append(int(i[0]))
-#			tcp_server_port.append(int(i[1]))			
-#	if not args.uport is None:	
-#		for i in args.uport:
-#			i=i.split(':')
-#			udp_client_port.append(int(i[0]))
-#			udp_server_port.append(int(i[1]))
-
-#	run(filename, client_ip, server_ip, tcp_client_port, tcp_server_port, udp_client_port, udp_server_port )
-	run(filename, port)
+	filename = sys.argv[1]
+	outfile = sys.argv[2]
+	run(filename, outfile)

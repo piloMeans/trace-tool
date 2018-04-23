@@ -5,37 +5,29 @@
 
 ### How to use
 
-- open the ftrace.
+- run the python script `run.py` 
 
-set `/proc/sys/kernel/ftrace_enabled` and `/sys/kernel/debug/tracing/tracing_on` to 1, so that
-we can use ftrace mcount.
-
-- build the module and load
+Following is a example
 
 ```bash
 
-# you shold modify the macro CPU_NUM in write_3.c first !!!!!
+# insert the module, set the sample ratio 0.001, and the core number of the server is 16
+./run.py start -s 0.001 -c 16		
 
-make
-#sudo insmod function.ko  # please do not use function.ko
-#sudo insmod write.ko
+# collect the data for 20 second, and analysis the data . (the port we interest is 11211) 
+./run.py deal -t 20 -p 11211			
 
-sudo insmod write.ko
+# remove the module
+./run.py stop							
 ```
 
-- modify the function 
+### Q&A
 
-Modify the `testfunction_1` in ~~`function.c`~~ `write_3.c`, you can do something youself want. 
-However, DO NOT modify the ~~embedded asm~~ assemble code in `pre_handler.S` and `ret_handler.S`,
-as they are use to save and restore the regs before your function. Without them, the kernel 
-will crash after you insert the `write.ko`.
+- why no output
 
-You can change the insert point as you change the `udp_send_skb` in write\_3.c to some other
-function (Remember that the function name should can be find in the `/proc/kallsyms` file)
+Situation 1, you just shutdown the ftrace, you should keep the ftrace open. You can do this by 
+setting `/proc/sys/kernel/ftrace_enabled` and `/sys/kernel/debug/tracing/tracing_on` to 1
+
+Situation 2, you set a too low sample ratio or your load program have too less network communication. 
 
 
-- view result
-
-If you use `trace_printk`, you can see the output in `sys/kernel/debug/tracing/trace_pipe`.
-If you use `printk`, you can see the output int `var/log/message` or dmesg.
-You can also do the file operation in the function.

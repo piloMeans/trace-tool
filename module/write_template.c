@@ -27,12 +27,12 @@
 #include <asm/atomic.h>
 #include <asm/cmpxchg.h>
 
-#define CPU_NUM 4
+#define CPU_NUM cpu_num
 #define FUNC_TABLE_SIZE 19
 #define SPEC_FUNC_TABLE_SIZE 1
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
-#define SAMPLE_RATIO 1000000000
+#define SAMPLE_RATIO sample_ratio
 extern void my_pre_handler(void);
 extern void my_pre_handler_2(void);
 extern void my_ret_handler(void);
