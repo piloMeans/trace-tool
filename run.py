@@ -25,6 +25,7 @@ def stop(args):
 	os.system('rm ./write_3.c')	
 
 def analysis(args):
+	os.system('mkdir -p trace/')
 	os.chdir('./trace')
 	filename = str(time.time())
 	lasttime= args.time
