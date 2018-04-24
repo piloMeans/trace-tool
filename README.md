@@ -3,6 +3,27 @@
 - kernel linux 4.14
 - ftrace open 
 
+### prerequisite
+
+- kernel-headers
+
+If you can find the corresponding version of the kernel-headers through 
+`yum list | grep kernel-headers`, you should use yum to install it. Just
+run the command `yum install kernel-headers-xxx`
+
+If no search in the yum list, you can download the corresponding rpm from
+this [link](https://pkgs.org/download/kernel-headers),and run the command `rpm -ivh xxxx.rpm` to install it.
+
+If still no search the version you need in the link above, just compile it. Good luck....
+
+
+- python numpy library
+
+NumPy is the fundamental package for scientific computing with Python.
+run command `pip install numpy` to install it
+
+
+
 ### How to use
 
 - run the python script `run.py` 
