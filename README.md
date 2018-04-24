@@ -21,7 +21,7 @@ Following is a example
 ./run.py stop							
 ```
 
-### Q&A
+### Something
 
 - why no output
 
@@ -30,4 +30,7 @@ setting `/proc/sys/kernel/ftrace_enabled` and `/sys/kernel/debug/tracing/tracing
 
 Situation 2, you set a too low sample ratio or your load program have too less network communication. 
 
+- NOT support probe reenter
 
+You __`should not` kprobe/ftrace the same function__ in this tool, or something weird may happen!!(maybe you 
+need reboot to set everything ok  > <)

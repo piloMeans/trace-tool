@@ -410,6 +410,11 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 	offset = target_addr - 5 - addr;
 	func->content = *((u32 *)(addr+1));
 	func->origin = *((u8*)addr);
+	if(func->origin != 0x0f){	// not support reenter
+		printk(KERN_ALERT "not support reenter function %s\n", func->name);
+		func->addr=0;
+		return ;
+	}
 	
 	set_page_rw(addr);
 		
