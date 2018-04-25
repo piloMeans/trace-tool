@@ -7,20 +7,26 @@
 
 - kernel-headers
 
-If you can find the corresponding version of the kernel-headers through 
-`yum list | grep kernel-headers`, you should use yum to install it. Just
-run the command `yum install kernel-headers-xxx`
+```bash
+#Find the kernel-headers of the corresponding version and install it
 
-If no search in the yum list, you can download the corresponding rpm from
-this [link](https://pkgs.org/download/kernel-headers),and run the command `rpm -ivh xxxx.rpm` to install it.
-
-If still no search the version you need in the link above, just compile it. Good luck....
+apt-cache search linux-headers
+apt-get install linux-headers-$(uname -r)
+```
+If no search the version you need in the link above, just compile it. Good luck....
 
 
 - python numpy library
 
 NumPy is the fundamental package for scientific computing with Python.
-run command `pip install numpy` to install it
+
+```bash
+# install pip tool in you server
+apt-get install python-pip
+
+# install numpy library 
+pip install numpy
+```
 
 
 
