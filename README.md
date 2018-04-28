@@ -1,7 +1,45 @@
 ### Environment
 
-- kernel linux 4.14
+- Ubuntu 16.04 (kernel version >= 4.8)
 - ftrace open 
+
+### prerequisite
+
+- kernel 
+
+we need the kernel version >= 4.8. You can upgrade the kernel using apt.
+
+```
+apt-cache search linux-image
+apt-get install linux-image-$(VERSION_FOUND)
+```
+
+
+
+- kernel-headers
+
+```bash
+#Find the kernel-headers of the corresponding version and install it
+
+apt-cache search linux-headers
+apt-get install linux-headers-$(uname -r)
+```
+If no search the version you need in the link above, just compile it. Good luck....
+
+
+- python numpy library
+
+NumPy is the fundamental package for scientific computing with Python.
+
+```bash
+# install pip tool in you server
+apt-get install python-pip
+
+# install numpy library 
+pip install numpy
+```
+
+
 
 ### How to use
 
