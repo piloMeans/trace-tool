@@ -1,5 +1,5 @@
 #CONFIG_MODULE_FORCE_UNLOAD=y
-override EXTRA_CFLAGS+= -O0
+#override EXTRA_CFLAGS+= -O0
 
 
 #CONFIG_MODULES_SIG=n
@@ -11,7 +11,7 @@ override EXTRA_CFLAGS+= -O0
 #function_a-m= function.o helper.o
 
 obj-m+=write.o
-write-m= write_3.o  pre_helper.o
+write-objs= write_3.o  pre_helper.o
 
 
 all:

@@ -411,9 +411,13 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 	func->content = *((u32 *)(addr+1));
 	func->origin = *((u8*)addr);
 	if(func->origin != 0x0f){	// not support reenter
-		printk(KERN_ALERT "not support reenter function %s\n", func->name);
-		func->addr=0;
-		return ;
+
+		//legacy prefixes in https://wiki.osdev.org/X86-64_Instruction_Encoding
+		if(func -> origin != 0x66 || func-> content != 0x90666666){		
+			printk(KERN_ALERT "not support reenter function %s\n", func->name);
+			func->addr=0;
+			return ;
+		}
 	}
 	
 	set_page_rw(addr);
