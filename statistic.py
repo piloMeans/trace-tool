@@ -143,7 +143,8 @@ function_table={
 	15:"ixgbe_xmit_frame",
 	16:"ip_rcv_finish",
 	17:"ip_forward",
-	18:"ip_forward_finish"
+	18:"ip_forward_finish",
+	19:"ixgbevf_xmit_frame"
    }
 	
 if __name__ == '__main__':

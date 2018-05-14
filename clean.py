@@ -153,6 +153,7 @@ func_table=[
 	('ip_rcv_finish',				0),
 	('ip_forward',					0),
 	('ip_forward_finish',			0),
+	('ixgbevf_xmit_frame',			3),
 ]
 	
 if __name__ == '__main__':

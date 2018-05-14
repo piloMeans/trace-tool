@@ -28,7 +28,7 @@
 #include <asm/cmpxchg.h>
 
 #define CPU_NUM cpu_num
-#define FUNC_TABLE_SIZE 19
+#define FUNC_TABLE_SIZE 20
 #define SPEC_FUNC_TABLE_SIZE 1
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
@@ -90,6 +90,7 @@ static struct func_table my_func_table[FUNC_TABLE_SIZE]={
 	{0,0,2,0,0,"ip_rcv_finish"},				// ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb);
 	{0,0,0,0,0,"ip_forward"},					// ip_forward(struct sk_buff *skb)
 	{0,0,2,0,0,"ip_forward_finish"},			// ip_forward_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
+	{0,0,0,0,3,"ixgbevf_xmit_frame"},			// ixgbevf_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
 };
 
 // spec func table is for function which change the skb->head
