@@ -33,10 +33,10 @@
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
 #define SAMPLE_RATIO sample_ratio
+
 extern void my_pre_handler(void);
 extern void my_pre_handler_2(void);
 extern void my_ret_handler(void);
-
 
 struct func_table{
 	unsigned long addr;
@@ -72,13 +72,13 @@ static struct func_table my_func_table[FUNC_TABLE_SIZE]={
 	{0,0,0,0,4,"skb_free_head"},				// skb_free_head(struct sk_buff *skb)
 //	{0,0,1,0,1,"ip_queue_xmit"},				// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
 	{0,0,0,0,0,"ip_rcv"},						// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
-	{0,0,0,0,0,"__netif_receive_skb_core"},		// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+	{0,0,0,0,0,"__netif_receive_skb_core"},		// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc, struct packet_type **ppt_prev)
 	{0,0,0,0,3,"ip_local_deliver"},				// ip_local_deliver(struct sk_buff *skb)
 	{0,0,2,0,0,"ip_local_out"},					// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
 	{0,0,2,0,0,"ip_output"},					// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,0,0,0,"__dev_queue_xmit"},				// __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
+	{0,0,0,0,0,"__dev_queue_xmit"},				// __dev_queue_xmit(struct sk_buff *skb, struct net_device *sb_dev)
 	{0,0,1,0,1,"napi_gro_receive"},				// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
-	{0,0,0,0,2,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
+	{0,0,0,0,2,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4, struct inet_cork *cork)
 	{0,0,1,0,2,"tcp_transmit_skb"},				// tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask)
 	{0,0,2,0,0,"br_handle_frame_finish"},		// br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
 	{0,0,0,0,0,"netif_receive_skb_internal"},	// netif_receive_skb_internal(struct sk_buff *skb)
