@@ -28,8 +28,8 @@
 #include <asm/cmpxchg.h>
 
 #define CPU_NUM cpu_num
-#define FUNC_TABLE_SIZE 20
-#define SPEC_FUNC_TABLE_SIZE 1
+#define FUNC_TABLE_SIZE func_table_size
+#define SPEC_FUNC_TABLE_SIZE spec_func_table_size
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
 #define SAMPLE_RATIO sample_ratio
@@ -41,8 +41,9 @@ extern void my_ret_handler(void);
 struct func_table{
 	unsigned long addr;
 	u32 content;
-	u16 skb_idx;
 	u8	origin;
+	u8 skb_idx;
+	u8 sk_idx;
 	u8 flag;	
 	char name[30];
 };
@@ -68,35 +69,13 @@ static struct kmem_cache *myslab;
 
 
 static struct func_table my_func_table[FUNC_TABLE_SIZE]={
-//	{0,0,0,0,1,"udp_send_skb"},
-	{0,0,0,0,4,"skb_free_head"},				// skb_free_head(struct sk_buff *skb)
-//	{0,0,1,0,1,"ip_queue_xmit"},				// ip_queue_xmit(struct sock *sk, struct sk_buff *skb, struct flowi *fl)
-	{0,0,0,0,0,"ip_rcv"},						// ip_rcv(struct sk_buff *skb, struct net_device* dev, struct packet_type *pt, struct net_device *orig_dev)
-	{0,0,0,0,0,"__netif_receive_skb_core"},		// __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc, struct packet_type **ppt_prev)
-	{0,0,0,0,3,"ip_local_deliver"},				// ip_local_deliver(struct sk_buff *skb)
-	{0,0,2,0,0,"ip_local_out"},					// ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,2,0,0,"ip_output"},					// ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,0,0,0,"__dev_queue_xmit"},				// __dev_queue_xmit(struct sk_buff *skb, struct net_device *sb_dev)
-	{0,0,1,0,1,"napi_gro_receive"},				// napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
-	{0,0,0,0,2,"udp_send_skb"},					// udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4, struct inet_cork *cork)
-	{0,0,1,0,2,"tcp_transmit_skb"},				// tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask)
-	{0,0,2,0,0,"br_handle_frame_finish"},		// br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,0,0,0,"netif_receive_skb_internal"},	// netif_receive_skb_internal(struct sk_buff *skb)
-	{0,0,1,0,0,"ovs_vport_receive"},			// ovs_vport_receive(struct vport *vport, struct sk_buff *skb, const struct ip_tunnel_info *tun_info)
-	{0,0,1,0,0,"ovs_execute_actions"},			// ovs_execute_actions(struct datapath *dp, struct sk_buff *skb, const struct sw_flow_actions *acts, struct sw_flow_key *key)
-// two driver, e1000/e1000e  ixgbe
-	{0,0,0,0,3,"e1000_xmit_frame"},				// e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
-	{0,0,0,0,3,"ixgbe_xmit_frame"},				// ixgbe_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
-	{0,0,2,0,0,"ip_rcv_finish"},				// ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb);
-	{0,0,0,0,0,"ip_forward"},					// ip_forward(struct sk_buff *skb)
-	{0,0,2,0,0,"ip_forward_finish"},			// ip_forward_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
-	{0,0,0,0,3,"ixgbevf_xmit_frame"},			// ixgbevf_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
+	FUNCTABLE
 };
 
 // spec func table is for function which change the skb->head
 // and this kind of function need the ret
 static struct func_table my_spec_func_table[SPEC_FUNC_TABLE_SIZE]={
-	{0,0,0,0,0,"pskb_expand_head"},				// pskb_expand_head(struct sk_buff *skb, int nhead, int ntail, gfp_t gfp_mask)
+	SPEC_FUNCTABLE
 };
 
 // addr 3 is for atomic_modifying_code

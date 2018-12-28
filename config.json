@@ -1,0 +1,255 @@
+{
+    "functable": [
+        {
+            "name": "skb_free_head",
+            "type": 4,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [],
+            "direction": "send"
+        },
+        {
+            "name": "ip_rcv",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ip_rcv_finish"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "__netif_receive_skb",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ip_rcv",
+                "ovs_vport_receive"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "ip_local_deliver",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ip_local_deliver_finish"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "ip_local_deliver_finish",
+            "type": 0,
+            "skb": 2,
+            "sk": 1,
+            "mask": 1,
+            "next": [
+                "tcp_v4_rcv",
+                "udp_rcv"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "tcp_v4_rcv",
+            "type": 3,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [],
+            "direction": "recv"
+        },
+        {
+            "name": "udp_rcv",
+            "type": 3,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [],
+            "direction": "recv"
+        },
+        {
+            "name": "ip_local_out",
+            "type": 0,
+            "skb": 2,
+            "sk": 1,
+            "mask": 1,
+            "next": [
+                "ip_output"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "ip_output",
+            "type": 0,
+            "skb": 2,
+            "sk": 1,
+            "mask": 1,
+            "next": [
+                "__dev_queue_xmit"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "__dev_queue_xmit",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "veth_xmit",
+                "ixgbe_xmit_frame",
+                "ixgbevf_xmit_frame"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "napi_gro_receive",
+            "type": 1,
+            "skb": 1,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "__netif_receive_skb"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "udp_send_skb",
+            "type": 2,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ip_local_out"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "tcp_transmit_skb",
+            "type": 2,
+            "skb": 1,
+            "sk": 0,
+            "mask": 1,
+            "next": [
+                "ip_local_out"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "ovs_vport_receive",
+            "type": 0,
+            "skb": 1,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ovs_execute_actions"
+            ],
+            "direction": "both"
+        },
+        {
+            "name": "ovs_execute_actions",
+            "type": 0,
+            "skb": 1,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "__dev_queue_xmit"
+            ],
+            "direction": "both"
+        },
+        {
+            "name": "e1000_xmit_frame",
+            "type": 3,
+            "skb": 0,
+            "sk": -1,
+            "mask": 0,
+            "next": [
+                "skb_free_head"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "ip_rcv_finish",
+            "type": 0,
+            "skb": 2,
+            "sk": 1,
+            "mask": 1,
+            "next": [
+                "ip_local_deliver",
+                "ip_forward"
+            ],
+            "direction": "recv"
+        },
+        {
+            "name": "ip_forward",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "ip_forward_finish"
+            ],
+            "direction": "both"
+        },
+        {
+            "name": "ip_forward_finish",
+            "type": 0,
+            "skb": 2,
+            "sk": 1,
+            "mask": 1,
+            "next": [
+                "ip_output"
+            ],
+            "direction": "both"
+        },
+        {
+            "name": "ixgbe_xmit_frame",
+            "type": 3,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "skb_free_head"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "ixgbevf_xmit_frame",
+            "type": 3,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "skb_free_head"
+            ],
+            "direction": "send"
+        },
+        {
+            "name": "veth_xmit",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1,
+            "next": [
+                "__netif_receive_skb"
+            ],
+            "direction": "both"
+        }
+    ],
+    "direction": "recv",
+    "special_functable": [
+        {
+            "name": "pskb_expand_head",
+            "type": 0,
+            "skb": 0,
+            "sk": -1,
+            "mask": 1
+        }
+    ]
+}

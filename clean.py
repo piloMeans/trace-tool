@@ -2,6 +2,8 @@
 
 import os
 import sys
+import common
+
 class record:
 	def __init__(self):
 		self.func_id=[]
@@ -37,7 +39,7 @@ def output(item, f):
 	out_string=out_string[:-1]+"\n"
 	f.write(out_string)
 
-def run(filename, outfile):
+def run(filename, outfile, func_table):
 
 	s = open(filename,'r').read().split('\n')[:-1]
 
@@ -122,6 +124,30 @@ def run(filename, outfile):
 	
 	f.close()
 
+
+
+# func_table=[
+# 	('skb_free_head',				4),
+# 	('ip_rcv',						0),
+# 	('__netif_receive_skb_core',	0),
+# 	('ip_local_deliver',			3),
+# 	('ip_local_out',				0),
+# 	('ip_output',					0),
+# 	('__dev_queue_xmit',			0),
+# 	('napi_gro_receive',			1),
+# 	('udp_send_skb',				2),
+# 	('tcp_transmit_skb',			2),
+# 	('br_handle_frame_finish',		0),
+# 	('netif_receive_skb_internal',	0),
+# 	('ovs_vport_receive',			0),
+# 	('ovs_execute_actions',			0),
+# 	('e100_xmit_frame',				3),
+# 	('ixgbe_xmit_frame',			3),
+# 	('ip_rcv_finish',				0),
+# 	('ip_forward',					0),
+# 	('ip_forward_finish',			0),
+# 	('ixgbevf_xmit_frame',			3),
+# ]
 SKB=0
 SKB_HEAD=1
 DATA=2
@@ -132,31 +158,9 @@ SPORT=6
 DPORT=7
 FUNC_ID=8
 TSTAMP=9
-
-func_table=[
-	('skb_free_head',				4),
-	('ip_rcv',						0),
-	('__netif_receive_skb_core',	0),
-	('ip_local_deliver',			3),
-	('ip_local_out',				0),
-	('ip_output',					0),
-	('__dev_queue_xmit',			0),
-	('napi_gro_receive',			1),
-	('udp_send_skb',				2),
-	('tcp_transmit_skb',			2),
-	('br_handle_frame_finish',		0),
-	('netif_receive_skb_internal',	0),
-	('ovs_vport_receive',			0),
-	('ovs_execute_actions',			0),
-	('e100_xmit_frame',				3),
-	('ixgbe_xmit_frame',			3),
-	('ip_rcv_finish',				0),
-	('ip_forward',					0),
-	('ip_forward_finish',			0),
-	('ixgbevf_xmit_frame',			3),
-]
-	
 if __name__ == '__main__':
+
 	filename = sys.argv[1]
 	outfile = sys.argv[2]
-	run(filename, outfile)
+	func_table,spec_functable=common.parse('config.json')
+	run(filename, outfile, func_table)

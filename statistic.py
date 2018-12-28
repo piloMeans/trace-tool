@@ -11,6 +11,7 @@ import argparse
 class stastic_tuple:
 	def __init__(self):
 		self.avg = []
+		self.p50 = []
 		self.count=0
 
 
@@ -67,23 +68,27 @@ def stastic(index, s):
 	res.count = len(data)
 	data=numpy.array(data)
 	res.avg = numpy.around(numpy.mean(data,0),6).tolist()
+	res.p50 = numpy.around(numpy.percentile(data, 50, axis=0),6).tolist()
 	return res
 
-def output(sample, stastic_res):
+def output(sample, stastic_res, functable):
 	temp = sample.split('/')
 	Func="Func\t"
 	for i in range(6, 6+int(temp[5])):
-		Func+=function_table[int(temp[i])]+"\t";
+		Func+=functable[int(temp[i])][0]+"\t";
 	print("%s\n" % Func)
 	print("%d\n" % stastic_res.count)	
-	stastic="AVG\t"
+	stastic_avg="AVG\t"
+	stastic_p50="P50\t"
 	#print stastic_res
 	for i in stastic_res.avg:
-		stastic += str(i)+"\t"
-	print("%s\n" % stastic)
-		
+		stastic_avg += str(i)+"\t"
+	for i in stastic_res.p50:
+		stastic_p50 += str(i)+"\t"
+	print("%s\n" % stastic_avg)
+	print("%s\n" % stastic_p50)
 			
-def func(ttuple, index, s):
+def func(ttuple, index, s, functable):
 	path=dict()
 	
 	for i in index:
@@ -104,10 +109,10 @@ def func(ttuple, index, s):
 			
 	for i in path:
 		temp_res = stastic(path[i], s)
-		output(s[path[i][0]], temp_res)
+		output(s[path[i][0]], temp_res, functable)
 	print(100*"=")
 
-def	run(filename, port):
+def	run(filename, port, functable):
 
 	# seperate based on the 5-tuple
 	tuple_5 = dict()
@@ -122,30 +127,30 @@ def	run(filename, port):
 		else:
 			tuple_5[tuple_temp]=[s.index(i)]
 	for i in tuple_5:
-		func(i, tuple_5[i], s)
+		func(i, tuple_5[i], s, functable)
 
-function_table={
-	0: "skb_free_head",
-	1: "ip_rcv",
-	2: "__netif_receive_skb_core",
-	3: "ip_local_deliver",
-	4: "ip_local_out",
-	5: "ip_output",
-	6: "__dev_queue_xmit",
-	7: "napi_gro_receive",
-	8: "udp_send_skb",
-	9: "tcp_transmit_skb",
-	10:"br_handle_frame_finish",
-	11:"netif_receive_skb_internal",
-	12:"ovs_vport_receive",
-	13:"ovs_execute_actions",
-	14:"e1000_xmit_frame",
-	15:"ixgbe_xmit_frame",
-	16:"ip_rcv_finish",
-	17:"ip_forward",
-	18:"ip_forward_finish",
-	19:"ixgbevf_xmit_frame"
-   }
+# functable={
+# 	0: "skb_free_head",
+# 	1: "ip_rcv",
+# 	2: "__netif_receive_skb_core",
+# 	3: "ip_local_deliver",
+# 	4: "ip_local_out",
+# 	5: "ip_output",
+# 	6: "__dev_queue_xmit",
+# 	7: "napi_gro_receive",
+# 	8: "udp_send_skb",
+# 	9: "tcp_transmit_skb",
+# 	10:"br_handle_frame_finish",
+# 	11:"netif_receive_skb_internal",
+# 	12:"ovs_vport_receive",
+# 	13:"ovs_execute_actions",
+# 	14:"e1000_xmit_frame",
+# 	15:"ixgbe_xmit_frame",
+# 	16:"ip_rcv_finish",
+# 	17:"ip_forward",
+# 	18:"ip_forward_finish",
+# 	19:"ixgbevf_xmit_frame"
+#    }
 	
 if __name__ == '__main__':
 
@@ -158,4 +163,5 @@ if __name__ == '__main__':
 	filename = args.filename
 	port = args.port
 
-	run(filename, port)
+	functable , spec_functable = common.parse('config.json')
+	run(filename, port, functable)
