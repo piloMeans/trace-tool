@@ -33,6 +33,7 @@
 #define ADDR_HEAD_SIZE 100000
 #define HASH_INTERVAL 12345
 #define SAMPLE_RATIO sample_ratio
+#define DEBUG debug
 
 extern void my_pre_handler(void);
 extern void my_pre_handler_2(void);
@@ -290,7 +291,7 @@ void testfunction_1(void){
 				printk(KERN_ALERT "CPU NUM is less than the cpu core numbers\n");
 				goto out1;
 			}
-#if 0
+#if DEBUG
 			output(skb, &time, i);
 #else
 			if(search((unsigned long)(skb->head), &idx, cpu)==0){
@@ -470,13 +471,22 @@ static int __init my_write_init(void)
 
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		my_func_table[i].addr = kallsyms_lookup_name(my_func_table[i].name);
+		if(my_func_table[i].addr==0){
+			printk(KERN_INFO "function %s not found in the kallsyms\n", my_func_table[i].name);
+		}
 		code_modify( &(my_func_table[i]), (unsigned long)my_pre_handler);
 	}
+#if DEBUG
+	for(i=0;i<FUNC_TABLE_SIZE;i++){
+		printk(KERN_INFO "function %s origin is %02x and content is %08x \n", my_func_table[i].name,
+			my_func_table[i].origin, my_func_table[i].content);
+	}
+#else
 	for(i=0;i<SPEC_FUNC_TABLE_SIZE;i++){
 		my_spec_func_table[i].addr = kallsyms_lookup_name(my_spec_func_table[i].name);
 		code_modify( &(my_spec_func_table[i]), (unsigned long)my_pre_handler_2);
 	}
-		
+#endif	
 	printk(KERN_INFO "write init\n");
     return 0;
 }
@@ -489,9 +499,12 @@ static void __exit my_write_exit(void)
 	for(i=0;i<FUNC_TABLE_SIZE;i++){
 		code_restore( &(my_func_table[i]));
 	}
+#if DEBUG
+#else
 	for(i=0;i<SPEC_FUNC_TABLE_SIZE;i++){
 		code_restore( &(my_spec_func_table[i]));
 	}
+#endif
 	//free the slab
 	for(i=0;i<CPU_NUM;i++){
 		for(j=0;j<ADDR_HEAD_SIZE;j++){

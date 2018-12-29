@@ -6,6 +6,7 @@ import numpy
 import math
 import sys
 import argparse
+import common
 
 
 class stastic_tuple:
@@ -54,7 +55,7 @@ def sub(a, b):
 	return res
 
 
-def stastic(index, s):
+def stastic(index, s, ratio):
 	data =[]
 	for i in index:
 		temp=s[i].split('/')
@@ -65,11 +66,14 @@ def stastic(index, s):
 		data.append(tempdata)
 
 	res=stastic_tuple()
+
+	if len(data)< int(ratio*len(s)):
+		return res,0
 	res.count = len(data)
 	data=numpy.array(data)
 	res.avg = numpy.around(numpy.mean(data,0),6).tolist()
 	res.p50 = numpy.around(numpy.percentile(data, 50, axis=0),6).tolist()
-	return res
+	return res,1
 
 def output(sample, stastic_res, functable):
 	temp = sample.split('/')
@@ -88,7 +92,7 @@ def output(sample, stastic_res, functable):
 	print("%s\n" % stastic_avg)
 	print("%s\n" % stastic_p50)
 			
-def func(ttuple, index, s, functable):
+def func(ttuple, index, s, functable, ratio):
 	path=dict()
 	
 	for i in index:
@@ -108,11 +112,13 @@ def func(ttuple, index, s, functable):
 	print('src %s:%d dst %s:%d proto %d\n' %(int2ip(ntohl(ttuple[0])), ntohs(ttuple[3]), int2ip(ntohl(ttuple[1])), ntohs(ttuple[4]), ttuple[2]))
 			
 	for i in path:
-		temp_res = stastic(path[i], s)
+		temp_res, judge = stastic(path[i], s, ratio)
+		if not judge:
+			continue
 		output(s[path[i][0]], temp_res, functable)
 	print(100*"=")
 
-def	run(filename, port, functable):
+def	run(filename, port, functable, ratio=0.1):
 
 	# seperate based on the 5-tuple
 	tuple_5 = dict()
@@ -127,7 +133,7 @@ def	run(filename, port, functable):
 		else:
 			tuple_5[tuple_temp]=[s.index(i)]
 	for i in tuple_5:
-		func(i, tuple_5[i], s, functable)
+		func(i, tuple_5[i], s, functable, ratio)
 
 # functable={
 # 	0: "skb_free_head",
@@ -157,11 +163,13 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser('visual the result')
 	parser.add_argument('-f','--file', dest='filename', help='file name of data', required=True)
 	parser.add_argument('-p','--port', dest='port', type=int, help='port of src/dst', required=True)
+	parser.add_argument('-r', dest='ratio', default=0.1, type=float, help='output counte base ratio')
 	args = parser.parse_args()
 
 
 	filename = args.filename
 	port = args.port
+	ratio = args.ratio
 
 	functable , spec_functable = common.parse('config.json')
-	run(filename, port, functable)
+	run(filename, port, functable, ratio)

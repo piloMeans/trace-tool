@@ -5,6 +5,7 @@ import time
 import clean
 import statistic
 import common
+import re
 
 def start(args):
 	ratio = int(args.ratio*1000000000)
@@ -15,6 +16,21 @@ def start(args):
 	f = open('./write_3.c','w')
 	template = open('./write_template.c').read()
 
+	with open('/proc/kallsyms','r') as allsymsf:
+		allsyms=allsymsf.read()
+	
+	for i in range(len(functable)):
+		pattern=r'\b'+functable[i][FUNCNAME]+r'\.isra\.[0-9]+\b'
+		result=re.search(pattern, allsyms)
+		
+		if result!=None:
+			temp=list(functable[i])
+			temp[FUNCNAME]=result.group(0)
+			functable[i]=tuple(temp)
+
+	debug=0
+	if args.all:
+		debug=1
 	func_str_template='{0,0,0,SKB_IDX,SK_IDX,TYPE,"FUNCNAME"},\n'
 	ft_string=''
 	sp_ft_string=''
@@ -32,7 +48,8 @@ def start(args):
 	template = template.replace('cpu_num', str(core)).replace('sample_ratio', str(ratio)).\
 			replace('spec_func_table_size',str(len(spec_functable))).\
 			replace('SPEC_FUNCTABLE',sp_ft_string).\
-			replace('func_table_size',str(len(functable))).replace('FUNCTABLE',ft_string)
+			replace('func_table_size',str(len(functable))).replace('FUNCTABLE',ft_string).\
+			replace('debug',str(debug))
 
 	f.write(template)
 	f.close()
@@ -64,6 +81,13 @@ def analysis(args):
 	port = args.port
 
 	out,err = common.execute('''
+	grep -i '#define debug' module/write_3.c | cut -d ' ' -f3
+	''')
+	debug=0
+	if int(out)==1:
+		debug=1
+
+	out,err = common.execute('''
 	mkdir -p trace/
 	cd trace
 	sudo cat /sys/kernel/debug/tracing/trace_pipe > /dev/null &
@@ -72,13 +96,21 @@ def analysis(args):
 	sudo cat /sys/kernel/debug/tracing/trace_pipe > FILENAME &
 	sleep LASTTIME
 	sudo kill `pgrep -x cat`
-	sed -i '/CPU/d' FILENAME
-	sed -i 's/^.*:[[:space:]]//' FILENAME
 	'''.replace('FILENAME', filename).replace('LASTTIME',str(lasttime)))
 
 	if out!='' or err!='':
 		print out
 		print err
+
+	if not debug:
+		os.chdir('./trace')
+		out,err = common.execute('''
+		sed -i '/CPU/d' FILENAME
+		sed -i 's/^.*:[[:space:]]//' FILENAME
+		'''.replace('FILENAME',filename))
+		if out!='' or err!='':
+			print out
+			print err
 	# os.system('sudo cat /sys/kernel/debug/tracing/trace_pipe > /dev/null &')
 	# time.sleep(2)
 	# os.system('sudo kill `pgrep -x cat`')
@@ -89,16 +121,16 @@ def analysis(args):
 
 	# os.system("sed -i '/CPU/d' "+filename)
 	# os.system("sed -i 's/^.*:[[:space:]]*//' " +filename)
-	os.chdir('./trace')
-	clean.run(filename, 'temp', functable)
-	statistic.run('temp', port, functable)
+		clean.run(filename, 'temp', functable)
+		statistic.run('temp', port, functable)
 
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	subcmd = parser.add_subparsers()
 
 	parser_start = subcmd.add_parser('start', help = 'Insert the module')
-	parser_start.add_argument('-s', type=float, dest='ratio',required='True', help='sample ratio, range is [0-1]')
+	parser_start.add_argument('-a',dest='all',help='output all without sampling', default=False, action='store_true')
+	parser_start.add_argument('-s', type=float, dest='ratio', default=0.1, help='sample ratio, range is [0-1]')
 	#parser_start.add_argument('-c', type=int, dest='core',required='True', help='core number of current machine.')
 	parser_start.set_defaults(func = start)
 

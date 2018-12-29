@@ -104,7 +104,8 @@
             "next": [
                 "veth_xmit",
                 "ixgbe_xmit_frame",
-                "ixgbevf_xmit_frame"
+                "ixgbevf_xmit_frame",
+                "__netif_receive_skb"
             ],
             "direction": "send"
         },
@@ -131,7 +132,7 @@
             "direction": "send"
         },
         {
-            "name": "tcp_transmit_skb",
+            "name": "__tcp_transmit_skb",
             "type": 2,
             "skb": 1,
             "sk": 0,
