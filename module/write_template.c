@@ -137,13 +137,13 @@ static inline void output(struct sk_buff *skb, struct timespec *time, int funcid
 
 	struct iphdr *iph;
 	struct tcphdr *tcph;
-	u32 data;
+	u16 data;
 	u64 tstamp;
 	tstamp = (time->tv_sec << 32) | time->tv_nsec;
 
 	iph= ip_hdr(skb);
 	tcph= tcp_hdr(skb);
-	data = *((u32*)(skb->head + skb->network_header + 4));
+	data = *((u16*)(skb->head + skb->network_header + 4));
 
 
 	trace_printk("%p %p %x %x %x %d %d %d %d %llx\n",skb, skb->head, data, iph->saddr, iph->daddr, iph->protocol, tcph->source , tcph->dest, funcid, tstamp);
