@@ -391,9 +391,11 @@ static void code_modify(struct func_table* func, unsigned long target_addr){
 	offset = target_addr - 5 - addr;
 	func->content = *((u32 *)(addr+1));
 	func->origin = *((u8*)addr);
-	if(func->origin != 0x0f){	// not support reenter
 
+	// the origin is likely to be (0f 1f 44 00 00)(low addr -> high addr)
+	if(func->origin != 0x0f){	// not support reenter
 		//legacy prefixes in https://wiki.osdev.org/X86-64_Instruction_Encoding
+		//special situation for legacy is (66 66 66 66 90)(low addr -> high addr)
 		if(func -> origin != 0x66 || func-> content != 0x90666666){		
 			printk(KERN_ALERT "not support reenter function %s\n", func->name);
 			func->addr=0;
