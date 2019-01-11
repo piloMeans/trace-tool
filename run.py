@@ -122,7 +122,7 @@ def analysis(args):
 	# os.system("sed -i '/CPU/d' "+filename)
 	# os.system("sed -i 's/^.*:[[:space:]]*//' " +filename)
 		clean.run(filename, 'temp', functable)
-		statistic.run('temp', port, functable)
+		statistic.run('temp', port, functable, vague=args.vague)
 
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
@@ -140,6 +140,7 @@ if __name__=='__main__':
 	parser_analysis = subcmd.add_parser('deal', help= 'Get the trace and do statistics work')
 	parser_analysis.add_argument('-t', type=int , dest='time', required='True',help='the sampling time (second)')
 	parser_analysis.add_argument('-p', type=int , dest='port', required='True',help='the port to be analysis (src/dst)')
+	parser_analysis.add_argument('-v', dest='vague', default=False, help='statistic in vague mode', action='store_true')
 	#parser_analysis.add_argument('-o', type=str , dest='output',help='output the result to file')
 
 	parser_analysis.set_defaults(func=analysis)

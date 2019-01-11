@@ -118,7 +118,7 @@ def func(ttuple, index, s, functable, ratio):
 		output(s[path[i][0]], temp_res, functable)
 	print(100*"=")
 
-def	run(filename, port, functable, ratio=0.1):
+def run(filename, port, functable, ratio=0.1, vague=False):
 
 	# seperate based on the 5-tuple
 	tuple_5 = dict()
@@ -127,7 +127,13 @@ def	run(filename, port, functable, ratio=0.1):
 		temp = i.split('/')
 		if int(temp[3]) != ntohs(port) and int(temp[4]) != ntohs(port):
 			continue
-		tuple_temp = (int(temp[0], 16),int(temp[1], 16), int(temp[2]),int(temp[3]),int(temp[4]))
+                if vague==True:
+                    if int(temp[3])==ntohs(port):
+                        tuple_temp = (int(temp[0],16), 0, int(temp[2]), int(temp[3]), 0)
+                    else:
+                        tuple_temp = (0, int(temp[1],16), int(temp[2]), 0, int(temp[4]))
+                else:
+		    tuple_temp = (int(temp[0], 16),int(temp[1], 16), int(temp[2]),int(temp[3]),int(temp[4]))
 		if tuple_5.has_key(tuple_temp):
 			tuple_5[tuple_temp].append(s.index(i))
 		else:
@@ -164,6 +170,7 @@ if __name__ == '__main__':
 	parser.add_argument('-f','--file', dest='filename', help='file name of data', required=True)
 	parser.add_argument('-p','--port', dest='port', type=int, help='port of src/dst', required=True)
 	parser.add_argument('-r', dest='ratio', default=0.1, type=float, help='output counte base ratio')
+        parser.add_argument('-v', dest='vague', default=False, help='statistic in the vague mode, (e.g. just use src_addr + src_port as a key the judge the flow)', action='store_true')
 	args = parser.parse_args()
 
 
@@ -172,4 +179,4 @@ if __name__ == '__main__':
 	ratio = args.ratio
 
 	functable , spec_functable = common.parse('config.json')
-	run(filename, port, functable, ratio)
+	run(filename, port, functable, ratio, args.vague)
