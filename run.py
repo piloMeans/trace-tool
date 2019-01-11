@@ -20,7 +20,7 @@ def start(args):
 		allsyms=allsymsf.read()
 	
 	for i in range(len(functable)):
-		pattern=r'\b'+functable[i][FUNCNAME]+r'\.isra\.[0-9]+\b'
+		pattern=r'\b'+functable[i][FUNCNAME]+r'\.(isra|constprop)\.[0-9]+\b'
 		result=re.search(pattern, allsyms)
 		
 		if result!=None:
