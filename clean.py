@@ -51,7 +51,7 @@ def run(filename, outfile, func_table):
 	for i in s:
 	#	count=count+1
 	#	print count
-		temp= i.split(' ')
+		temp= i.strip(' ').split(' ')
 	
 		if temp[1]=='==':	#switch the key
 			if not addrhash.has_key(temp[2]):
