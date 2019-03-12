@@ -240,8 +240,9 @@ void testfunction_ret_1(void){
 	if(search(head, &idx, cpu)== 0){
 		remove_hash(cpu, idx, head);
 		trace_printk(" %p == %p\n", (void*)head, skb->head);
-		search((unsigned long)(skb->head), &idx, cpu);
+		search((unsigned long)(skb->head), &idx, cpu); //find the idx
 		insert_hash(cpu, idx, (unsigned long)(skb->head));
+		skb_shinfo(skb)->__unused |= 0x0c;
 	}
 #else
 		trace_printk(" %p == %p\n", (void*)head, skb->head);
@@ -294,18 +295,28 @@ void testfunction_1(void){
 #if DEBUG
 			output(skb, &time, i);
 #else
-			if(search((unsigned long)(skb->head), &idx, cpu)==0){
-				// find 
+			if(my_func_table[i].flag != 1 &&  my_func_table[i].flag !=2){
+				if((skb_shinfo(skb)->__unused & 0x0c) != 0x0c)
+					goto out1;
+				if(search( (unsigned long)(skb->head), &idx, cpu)==0){
+					// find 
 
-				output(skb, &time, i);
+					output(skb, &time, i);
 
-				if(my_func_table[i].flag == 3 || my_func_table[i].flag==4){
-					remove_hash(cpu, idx, (unsigned long)(skb->head));
+					if(my_func_table[i].flag == 3 || my_func_table[i].flag==4){
+						remove_hash(cpu, idx, (unsigned long)(skb->head));
+					}
 				}
 	
 			}else{
 				// not found 
-				if(my_func_table[i].flag == 1 ||  my_func_table[i].flag ==2){
+				if(search((unsigned long)(skb->head), &idx, cpu)==0){
+					// find 
+					output(skb, &time, i);
+					goto out1;
+				}
+
+				//if(my_func_table[i].flag == 1 ||  my_func_table[i].flag ==2){
 					if(time.tv_nsec < SAMPLE_RATIO){
 						
 						if ( !check_frame(skb) )
@@ -316,7 +327,7 @@ void testfunction_1(void){
 						//insert into hash
 						insert_hash(cpu, idx, (unsigned long)(skb->head));
 					}
-				}
+				//}
 			}
 #endif
 

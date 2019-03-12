@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import os
+import sys
 import time
 import clean
 import statistic
@@ -55,6 +56,9 @@ def start(args):
 	f.close()
 	# os.system('make')
 	# os.system('sudo insmod write.ko')
+        if args.fake:
+            print("already generate the file")
+            sys.exit()
 	out,err=common.execute('''
 	make
 	sudo insmod write.ko
@@ -131,7 +135,7 @@ if __name__=='__main__':
 	parser_start = subcmd.add_parser('start', help = 'Insert the module')
 	parser_start.add_argument('-a',dest='all',help='output all without sampling', default=False, action='store_true')
 	parser_start.add_argument('-s', type=float, dest='ratio', default=0.1, help='sample ratio, range is [0-1]')
-	#parser_start.add_argument('-c', type=int, dest='core',required='True', help='core number of current machine.')
+	parser_start.add_argument('--fake', dest='fake',default=False,action='store_true', help='Only generate the target file, without running.')
 	parser_start.set_defaults(func = start)
 
 	parser_stop = subcmd.add_parser('stop', help = 'Remove the module')
