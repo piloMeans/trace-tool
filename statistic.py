@@ -118,7 +118,7 @@ def func(ttuple, index, s, functable, ratio):
 		output(s[path[i][0]], temp_res, functable)
 	print(100*"=")
 
-def run(filename, port, functable, ratio=0.1, vague=False):
+def run(filename, port, functable, ratio=0.01, vague=False):
 
 	# seperate based on the 5-tuple
 	tuple_5 = dict()

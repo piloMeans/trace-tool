@@ -15,7 +15,7 @@ def start(args):
 
 	os.chdir('./module')
 	f = open('./write_3.c','w')
-	template = open('./write_template.c').read()
+	template = open('./write_template.c_'+str(args.type)).read()
 
 	with open('/proc/kallsyms','r') as allsymsf:
 		allsyms=allsymsf.read()
@@ -134,6 +134,7 @@ if __name__=='__main__':
 
 	parser_start = subcmd.add_parser('start', help = 'Insert the module')
 	parser_start.add_argument('-a',dest='all',help='output all without sampling', default=False, action='store_true')
+	parser_start.add_argument('-t',dest='type',help='type of template', required=True, type=int)
 	parser_start.add_argument('-s', type=float, dest='ratio', default=0.1, help='sample ratio, range is [0-1]')
 	parser_start.add_argument('--fake', dest='fake',default=False,action='store_true', help='Only generate the target file, without running.')
 	parser_start.set_defaults(func = start)
