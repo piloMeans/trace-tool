@@ -46,6 +46,20 @@ Following is a example
 
 ### Something
 
+- how to change probe pront?
+
+change the file `config.json`, the format is like this 
+
+```python
+{
+	"name" : "function_name",
+	"type" : x,   # type of the function, detail you can read the wiki
+	"skb" : x,    # parameter position of skb, 
+	"sk" : x,     # parameter position of sk,
+	"mask" : x    # 0 means not probe , 1 means probe
+}
+```
+
 - why no output
 
 Situation 1, you just shutdown the ftrace, you should keep the ftrace open. You can do this by 
